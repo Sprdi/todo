@@ -12,12 +12,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/lists/create', [ListsController::class, 'create']);
-Route::put('/lists/update/{id}', [ListsController::class, 'update']);
-Route::delete('/lists/delete/{id}', [ListsController::class, 'delete']);
-
 Route::get('/tasks', [TasksController::class, 'index'])->name('tasks.index');
 Route::post('/tasks', [TasksController::class, 'store'])->name('tasks.store');
-Route::post('/tasks/create', [TasksController::class, 'create'])->name('tasks.create');
-Route::put('/tasks/update/{id}', [TasksController::class, 'update'])->name('tasks.update');
-Route::delete('/tasks/delete/{id}', [TasksController::class, 'delete'])->name('tasks.delete');
+Route::get('/tasks/{task}/edit', [TasksController::class, 'edit'])->name('tasks.edit');
+Route::put('/tasks/{task}', [TasksController::class, 'update'])->name('tasks.update');
+Route::delete('/tasks/{task}', [TasksController::class, 'destroy'])->name('tasks.destroy');
+Route::get('/tasks/{task}/show', [TasksController::class, 'show'])->name('tasks.show');
+Route::post('/tasks/{task}/toggle-status', [TasksController::class, 'toggleStatus'])->name('tasks.toggle-status');
+Route::get('/tasks/completed', [TasksController::class, 'completed'])->name('tasks.completed');

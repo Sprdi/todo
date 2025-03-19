@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('tasks', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('type');
+            $table->enum('type', ['work', 'personal']);
+            $table->enum('priority', ['high', 'medium', 'low']);
             $table->date('date');
             $table->string('note')->nullable();
             $table->string('status');

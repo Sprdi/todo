@@ -4,46 +4,155 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\tasks;
+use Carbon\Carbon;
 
 class TasksController extends Controller
 {
-
     public function index() {
-        $tasks = tasks::all();
-        return view('tasks.index', compact('tasks'));
+        // Get sidebar counts
+        $activeTasks = tasks::where('status', 'pending')->count();
+        $completedTasksCount = tasks::where('status', 'completed')->count();
+        $workTasksCount = tasks::where('type', 'work')->where('status', 'pending')->count();
+        $personalTasksCount = tasks::where('type', 'personal')->where('status', 'pending')->count();
+        $highPriorityTasks = tasks::where('priority', 'high')->where('status', 'pending')->count();
+        $mediumPriorityTasks = tasks::where('priority', 'medium')->where('status', 'pending')->count();
+        $lowPriorityTasks = tasks::where('priority', 'low')->where('status', 'pending')->count();
+
+        // Get tasks for display
+        $workTasksList = tasks::where('type', 'work')
+            ->where('status', 'pending')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->map(function ($task) {
+                $task->formatted_date = Carbon::parse($task->date)->format('D, d M Y');
+                return $task;
+            });
+            
+        $personalTasksList = tasks::where('type', 'personal')
+            ->where('status', 'pending')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->map(function ($task) {
+                $task->formatted_date = Carbon::parse($task->date)->format('D, d M Y');
+                return $task;
+            });
+        
+        return view('tasks.index', [
+            'workTasks' => $workTasksList,
+            'personalTasks' => $personalTasksList,
+            'activeTasks' => $activeTasks,
+            'completedTasksCount' => $completedTasksCount,
+            'workTasksCount' => $workTasksCount,
+            'personalTasksCount' => $personalTasksCount,
+            'highPriorityTasks' => $highPriorityTasks,
+            'mediumPriorityTasks' => $mediumPriorityTasks,
+            'lowPriorityTasks' => $lowPriorityTasks,
+        ]);
     }
 
-    // Create a new task
-    public function create(Request $request) {
-        $task = new tasks();
-        $task->name = $request->name;
-        $task->type = $request->type;
-        $task->date = $request->date;
-        $task->note = $request->note;
-        $task->status = $request->status;
+    public function completed() {
+        // Get sidebar counts
+        $activeTasks = tasks::where('status', 'pending')->count();
+        $completedTasksCount = tasks::where('status', 'completed')->count();
+        $workTasks = tasks::where('type', 'work')->where('status', 'pending')->count();
+        $personalTasks = tasks::where('type', 'personal')->where('status', 'pending')->count();
+        $highPriorityTasks = tasks::where('priority', 'high')->where('status', 'pending')->count();
+        $mediumPriorityTasks = tasks::where('priority', 'medium')->where('status', 'pending')->count();
+        $lowPriorityTasks = tasks::where('priority', 'low')->where('status', 'pending')->count();
+
+        // Get completed tasks list
+        $completedTasksList = tasks::where('status', 'completed')
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function ($task) {
+                $task->formatted_date = Carbon::parse($task->date)->format('D, d M Y');
+                return $task;
+            });
+        
+        return view('tasks.completed', [
+            'completedTasks' => $completedTasksList,
+            'activeTasks' => $activeTasks,
+            'completedTasksCount' => $completedTasksCount,
+            'workTasks' => $workTasks,
+            'personalTasks' => $personalTasks,
+            'highPriorityTasks' => $highPriorityTasks,
+            'mediumPriorityTasks' => $mediumPriorityTasks,
+            'lowPriorityTasks' => $lowPriorityTasks,
+        ]);
+    }
+
+    public function toggleStatus(tasks $task)
+    {
+        $task->status = $task->status === 'completed' ? 'pending' : 'completed';
         $task->save();
-
-        return response()->json($task, 201);
+        
+        return response()->json([
+            'success' => true,
+            'status' => $task->status
+        ]);
     }
 
-    // Update an existing task
-    public function update(Request $request, $id) {
-        $task = tasks::findOrFail($id);
-        $task->name = $request->name;
-        $task->type = $request->type;
-        $task->date = $request->date;
-        $task->note = $request->note;
-        $task->status = $request->status;
-        $task->save();
+    public function store(Request $request) {
+        $request->validate([
+            'name' => 'required',
+            'type' => 'required|in:work,personal',
+            'priority' => 'required|in:high,medium,low',
+            'date' => 'required|date',
+            'note' => 'nullable'
+        ]);
 
-        return response()->json($task, 200);
+        tasks::create([
+            'name' => $request->name,
+            'type' => $request->type,
+            'priority' => $request->priority,
+            'date' => $request->date,
+            'note' => $request->note,
+            'status' => 'pending'
+        ]);
+
+        return redirect()->route('tasks.index')->with('success', 'Task created successfully');
     }
 
-    // Delete a task
-    public function delete($id) {
-        $task = tasks::findOrFail($id);
+    public function edit(tasks $task)
+    {
+        return response()->json($task);
+    }
+
+    public function update(Request $request, tasks $task)
+    {
+        $request->validate([
+            'name' => 'required',
+            'type' => 'required|in:work,personal',
+            'priority' => 'required|in:high,medium,low',
+            'date' => 'required|date',
+            'note' => 'nullable'
+        ]);
+
+        $task->update([
+            'name' => $request->name,
+            'type' => $request->type,
+            'priority' => $request->priority,
+            'date' => $request->date,
+            'note' => $request->note
+        ]);
+
+        if($request->ajax()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('tasks.index')->with('success', 'Task updated successfully');
+    }
+
+    public function destroy(tasks $task)
+    {
         $task->delete();
-
-        return response()->json(null, 204);
+        return redirect()->route('tasks.index')->with('success', 'Task deleted successfully');
     }
+
+    public function show(tasks $task)
+    {
+        $task->formatted_date = Carbon::parse($task->date)->format('D, d M Y');
+        return response()->json($task);
+    }
+
 }

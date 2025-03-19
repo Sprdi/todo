@@ -9,6 +9,7 @@ class tasks extends Model
     protected $fillable = [
         'name',
         'type',
+        'priority',
         'date',
         'note',
         'status',
